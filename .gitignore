@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+venv/
+.venv/
+env/
+ENV/
+
+# Build outputs
+dist/
+frontend/dist/
+build/
+
+# Python cache & compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+backend/**/__pycache__/
+.pytest_cache/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Operating system & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+
+# Agent & AI artifacts
+.gemini/
