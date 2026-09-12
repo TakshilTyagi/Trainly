@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Clock, MapPin } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 interface LeaveHomeByBannerProps {
   boardingStation: {
@@ -14,6 +15,7 @@ interface LeaveHomeByBannerProps {
 }
 
 export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({ boardingStation }) => {
+  const { t } = useLanguage();
   const [homeLocation, setHomeLocation] = useState<{lat: number, lon: number} | null>(null);
   const [driveTimeMinutes, setDriveTimeMinutes] = useState<number | null>(null);
   const [trafficCondition, setTrafficCondition] = useState<string>('Light');
@@ -126,9 +128,11 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({ boardingSt
             <Clock className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-xs uppercase tracking-wider font-semibold text-emerald-600 dark:text-emerald-400 block leading-tight">Leave Home By</span>
+            <span className="text-xs uppercase tracking-wider font-semibold text-emerald-600 dark:text-emerald-400 block leading-tight">
+              {t('leave_home_by') || 'Leave Home By'}
+            </span>
             <div className="text-3xl font-black text-gray-900 dark:text-white tracking-tight leading-none mt-1">
-              {leaveByTime || (locationError ? <span className="text-xl text-gray-400 font-medium">--:--</span> : <span className="text-xl text-gray-400 font-medium animate-pulse">Calculating...</span>)}
+              {leaveByTime || (locationError ? <span className="text-xl text-gray-400 font-medium">--:--</span> : <span className="text-xl text-gray-400 font-medium animate-pulse">{t('calculating') || 'Calculating...'}</span>)}
             </div>
           </div>
         </div>
@@ -137,26 +141,28 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({ boardingSt
         <div className="flex-1 w-full grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           
           <div className="bg-gray-50/80 dark:bg-gray-800/60 rounded-2xl p-3 border border-gray-100 dark:border-gray-800">
-            <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 block">Drive Time</span>
+            <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 block">{t('drive_time') || 'Drive Time'}</span>
             <span className="text-sm font-bold text-gray-900 dark:text-gray-100 block mt-0.5">
               {driveTimeMinutes !== null ? `${driveTimeMinutes} min` : (locationError ? 'N/A' : '...')}
             </span>
           </div>
 
           <div className="bg-gray-50/80 dark:bg-gray-800/60 rounded-2xl p-3 border border-gray-100 dark:border-gray-800">
-            <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 block">Buffer</span>
+            <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 block">{t('buffer_time') || 'Buffer'}</span>
             <span className="text-sm font-bold text-gray-900 dark:text-gray-100 block mt-0.5">{BUFFER_MINUTES} min</span>
           </div>
 
           <div className="bg-gray-50/80 dark:bg-gray-800/60 rounded-2xl p-3 border border-gray-100 dark:border-gray-800">
-            <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 block">Departure</span>
+            <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 block">{t('departure_time') || 'Departure'}</span>
             <span className="text-sm font-bold text-gray-900 dark:text-gray-100 block mt-0.5">{departureTimeStr} IST</span>
           </div>
 
           <div className="bg-gray-50/80 dark:bg-gray-800/60 rounded-2xl p-3 border border-gray-100 dark:border-gray-800">
-            <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 block">Traffic</span>
+            <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 block">{t('traffic_condition') || 'Traffic'}</span>
             <span className={`text-sm font-bold block mt-0.5 ${trafficCondition === 'Heavy' ? 'text-rose-600' : trafficCondition === 'Moderate' ? 'text-amber-600' : 'text-emerald-600'}`}>
-              {driveTimeMinutes !== null ? trafficCondition : 'N/A'}
+              {driveTimeMinutes !== null 
+                ? (trafficCondition === 'Heavy' ? t('traffic_heavy') : trafficCondition === 'Moderate' ? t('traffic_moderate') : t('traffic_light')) 
+                : 'N/A'}
             </span>
           </div>
           
@@ -171,7 +177,7 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({ boardingSt
              </div>
              <div className="text-center mt-1">
                <span className="text-sm font-black text-gray-900 dark:text-white block leading-none">{confidence}%</span>
-               <span className="text-[9px] uppercase tracking-wider font-bold text-gray-500 block">Confidence</span>
+               <span className="text-[9px] uppercase tracking-wider font-bold text-gray-500 block">{t('confidence') || 'Confidence'}</span>
              </div>
           </div>
         )}
@@ -181,7 +187,7 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({ boardingSt
       {locationError && (
         <div className="mt-3 text-xs text-amber-600 dark:text-amber-400 font-medium px-2 flex items-center">
           <MapPin className="w-3 h-3 mr-1" />
-          {locationError}
+          {t('enable_location_prompt') || locationError}
         </div>
       )}
     </div>

@@ -192,7 +192,7 @@ export const SafetyPage: React.FC = () => {
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 flex items-center justify-center">
           <Shield className="w-4 h-4 mr-1 text-rose-500" />
-          An extension of RPF's Meri Saheli / Operation Mahila Suraksha
+          {t('safety_subtitle') || "An extension of RPF's Meri Saheli / Operation Mahila Suraksha"}
         </p>
       </div>
 
@@ -205,7 +205,7 @@ export const SafetyPage: React.FC = () => {
             <div className="w-24 h-24 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center mb-4 border-4 border-emerald-500">
               <CheckCircle2 className="w-12 h-12 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 text-center">Alert Sent Successfully</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 text-center">{t('sos_alert_sent') || 'Alert Sent Successfully'}</h2>
             <p className="text-center text-gray-600 dark:text-gray-300 max-w-md">
               Alert routed to RPF control room, {matchedTrain ? "your train's TT," : ""} and nearby Trainly users {matchedTrain ? "on your train" : "in your vicinity"}.
             </p>
@@ -247,7 +247,7 @@ export const SafetyPage: React.FC = () => {
             </div>
             
             <p className="mt-6 text-gray-500 dark:text-gray-400 font-medium text-center">
-              Press and hold for 2 seconds to activate.<br/>
+              {t('sos_hold_prompt') || 'Press and hold for 2 seconds to activate.'}<br/>
               <span className="text-sm">Alerts RPF, TT, and nearby users.</span>
             </p>
           </div>
