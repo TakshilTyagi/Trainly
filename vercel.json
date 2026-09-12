@@ -4,10 +4,6 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "https://trainly-dc4x.onrender.com/api/$1"
-    },
-    {
       "source": "/((?!assets/|favicon.*|.*\\..*).*)",
       "destination": "/index.html"
     }
