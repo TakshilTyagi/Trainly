@@ -143,18 +143,18 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({ boardingSt
           <div className="bg-gray-50/80 dark:bg-gray-800/60 rounded-2xl p-3 border border-gray-100 dark:border-gray-800">
             <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 block">{t('drive_time') || 'Drive Time'}</span>
             <span className="text-sm font-bold text-gray-900 dark:text-gray-100 block mt-0.5">
-              {driveTimeMinutes !== null ? `${driveTimeMinutes} min` : (locationError ? 'N/A' : '...')}
+              {driveTimeMinutes !== null ? `${driveTimeMinutes} ${t('min_unit')}` : (locationError ? 'N/A' : '...')}
             </span>
           </div>
 
           <div className="bg-gray-50/80 dark:bg-gray-800/60 rounded-2xl p-3 border border-gray-100 dark:border-gray-800">
             <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 block">{t('buffer_time') || 'Buffer'}</span>
-            <span className="text-sm font-bold text-gray-900 dark:text-gray-100 block mt-0.5">{BUFFER_MINUTES} min</span>
+            <span className="text-sm font-bold text-gray-900 dark:text-gray-100 block mt-0.5">{BUFFER_MINUTES} {t('min_unit')}</span>
           </div>
 
           <div className="bg-gray-50/80 dark:bg-gray-800/60 rounded-2xl p-3 border border-gray-100 dark:border-gray-800">
             <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 block">{t('departure_time') || 'Departure'}</span>
-            <span className="text-sm font-bold text-gray-900 dark:text-gray-100 block mt-0.5">{departureTimeStr} IST</span>
+            <span className="text-sm font-bold text-gray-900 dark:text-gray-100 block mt-0.5">{departureTimeStr} {t('ist_unit')}</span>
           </div>
 
           <div className="bg-gray-50/80 dark:bg-gray-800/60 rounded-2xl p-3 border border-gray-100 dark:border-gray-800">

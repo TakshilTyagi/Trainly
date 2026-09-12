@@ -23,7 +23,7 @@ interface TrainData {
 }
 
 export const SafetyPage: React.FC = () => {
-  const { t, tStation } = useLanguage();
+  const { t, tStation, tTrainName } = useLanguage();
   
   const [userLoc, setUserLoc] = useState<LivePosition | null>(null);
   const [locError, setLocError] = useState<boolean>(false);
@@ -248,7 +248,7 @@ export const SafetyPage: React.FC = () => {
             
             <p className="mt-6 text-gray-500 dark:text-gray-400 font-medium text-center">
               {t('sos_hold_prompt') || 'Press and hold for 2 seconds to activate.'}<br/>
-              <span className="text-sm">Alerts RPF, TT, and nearby users.</span>
+              <span className="text-sm">{t('sos_hold_subtext') || 'Alerts RPF, TT, and nearby users.'}</span>
             </p>
           </div>
         )}
@@ -264,37 +264,37 @@ export const SafetyPage: React.FC = () => {
             <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400">
               <MapPin className="w-5 h-5" />
             </div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Auto-Detection</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t('auto_detection') || 'Auto-Detection'}</h2>
           </div>
           
           <div className="flex-1 flex flex-col justify-center">
             {isDetecting ? (
               <div className="flex items-center text-gray-500 dark:text-gray-400">
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                <span>Locating your train...</span>
+                <span>{t('locating_train') || 'Locating your train...'}</span>
               </div>
             ) : matchedTrain ? (
               <div className="space-y-1">
                 <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span>Match Found</span>
+                  <span>{t('match_found') || 'Match Found'}</span>
                 </span>
                 <p className="text-xl font-bold text-gray-900 dark:text-white mt-2">
                   <span className="text-blue-600 dark:text-blue-400 mr-2">#{matchedTrain.train_no}</span>
-                  {matchedTrain.train_name}
+                  {tTrainName(matchedTrain.train_name, matchedTrain.train_no, false)}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Matched via live GPS telemetry correlation.
+                  {t('matched_via_gps') || 'Matched via live GPS telemetry correlation.'}
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
                 <div className="flex items-start text-amber-600 dark:text-amber-500">
                   <AlertTriangle className="w-5 h-5 mr-2 shrink-0 mt-0.5" />
-                  <span className="font-medium">Couldn't detect your train automatically.</span>
+                  <span className="font-medium">{t('couldnt_detect_train') || "Couldn't detect your train automatically."}</span>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {locError ? "Location permissions denied." : "No tracked train nearby."} You can still use the SOS and helpline buttons below.
+                  {locError ? t('loc_denied_help') : t('no_train_nearby_help')}
                 </p>
               </div>
             )}
@@ -307,42 +307,42 @@ export const SafetyPage: React.FC = () => {
           <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl rounded-2xl p-5 border border-indigo-200/60 dark:border-indigo-900/40 shadow-md">
             <h3 className="text-xs uppercase tracking-wider font-bold text-indigo-600 dark:text-indigo-400 mb-3 flex items-center">
               <Train className="w-3.5 h-3.5 mr-1.5" />
-              Train Ticket Examiner (TT)
+              {t('tte_title') || 'Train Ticket Examiner (TT)'}
             </h3>
             {matchedTrain ? (
               <div className="flex justify-between items-center">
                 <div>
                   <p className="font-bold text-gray-900 dark:text-white">{getMockTTContact(matchedTrain.train_no).name}</p>
-                  <p className="text-sm text-gray-500">Coach: {getMockTTContact(matchedTrain.train_no).coach}</p>
-                  <p className="text-[10px] text-gray-400 italic mt-1">*Illustrative directory data</p>
+                  <p className="text-sm text-gray-500">{t('coach_label') || 'Coach'}: {getMockTTContact(matchedTrain.train_no).coach}</p>
+                  <p className="text-[10px] text-gray-400 italic mt-1">{t('illustrative_data') || '*Illustrative directory data'}</p>
                 </div>
                 <a href={`tel:${getMockTTContact(matchedTrain.train_no).phone.replace(/[^0-9+]/g, '')}`} className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 transition-colors">
                   <Phone className="w-4 h-4" />
                 </a>
               </div>
             ) : (
-              <p className="text-sm text-gray-500 italic">Contact not available — use 182 for immediate assistance.</p>
+              <p className="text-sm text-gray-500 italic">{t('contact_not_avail') || 'Contact not available — use 182 for immediate assistance.'}</p>
             )}
           </div>
 
           <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl rounded-2xl p-5 border border-purple-200/60 dark:border-purple-900/40 shadow-md">
             <h3 className="text-xs uppercase tracking-wider font-bold text-purple-600 dark:text-purple-400 mb-3 flex items-center">
               <MapPin className="w-3.5 h-3.5 mr-1.5" />
-              Next Station RPF Post
+              {t('next_station_rpf') || 'Next Station RPF Post'}
             </h3>
             {matchedTrain && nextStation ? (
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="font-bold text-gray-900 dark:text-white">{tStation(nextStation.station_name)} RPF Post</p>
-                  <p className="text-sm text-gray-500">ETA: {nextStation.predicted_time || nextStation.scheduled_time} IST</p>
-                  <p className="text-[10px] text-gray-400 italic mt-1">*Illustrative directory data</p>
+                  <p className="font-bold text-gray-900 dark:text-white">{tStation(nextStation.station_name)} {t('rpf_post') || 'RPF Post'}</p>
+                  <p className="text-sm text-gray-500">{t('eta_label') || 'ETA'}: {nextStation.predicted_time || nextStation.scheduled_time} {t('ist_unit') || 'IST'}</p>
+                  <p className="text-[10px] text-gray-400 italic mt-1">{t('illustrative_data') || '*Illustrative directory data'}</p>
                 </div>
                 <a href={`tel:${getMockRPFContact(nextStation.station_name).phone.replace(/[^0-9+]/g, '')}`} className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center text-purple-600 dark:text-purple-400 hover:bg-purple-200 transition-colors">
                   <Phone className="w-4 h-4" />
                 </a>
               </div>
             ) : (
-              <p className="text-sm text-gray-500 italic">Contact not available — use 182 for immediate assistance.</p>
+              <p className="text-sm text-gray-500 italic">{t('contact_not_avail') || 'Contact not available — use 182 for immediate assistance.'}</p>
             )}
           </div>
 
@@ -353,23 +353,23 @@ export const SafetyPage: React.FC = () => {
       <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl rounded-3xl p-6 border border-emerald-200/60 dark:border-emerald-900/40 shadow-xl shadow-emerald-500/5">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
           <AlertCircle className="w-5 h-5 mr-2 text-emerald-500" />
-          Quick-Dial Helplines (Verified)
+          {t('quick_dial_helplines') || 'Quick-Dial Helplines (Verified)'}
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           
           <a href="tel:182" className="flex flex-col items-center justify-center p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 border border-gray-100 dark:border-gray-700 hover:border-emerald-200 dark:hover:border-emerald-800 transition-colors group">
             <span className="text-2xl font-black text-gray-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">182</span>
-            <span className="text-xs font-semibold text-gray-500 mt-1 uppercase tracking-wider text-center">RPF Women's<br/>Security</span>
+            <span className="text-xs font-semibold text-gray-500 mt-1 uppercase tracking-wider text-center">{t('rpf_womens_security') || "RPF Women's Security"}</span>
           </a>
 
           <a href="tel:1512" className="flex flex-col items-center justify-center p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 border border-gray-100 dark:border-gray-700 hover:border-emerald-200 dark:hover:border-emerald-800 transition-colors group">
             <span className="text-2xl font-black text-gray-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">1512</span>
-            <span className="text-xs font-semibold text-gray-500 mt-1 uppercase tracking-wider text-center">GRP Helpline<br/>State Police</span>
+            <span className="text-xs font-semibold text-gray-500 mt-1 uppercase tracking-wider text-center">{t('grp_helpline') || 'GRP Helpline State Police'}</span>
           </a>
 
           <a href="tel:139" className="flex flex-col items-center justify-center p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 border border-gray-100 dark:border-gray-700 hover:border-emerald-200 dark:hover:border-emerald-800 transition-colors group">
             <span className="text-2xl font-black text-gray-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">139</span>
-            <span className="text-xs font-semibold text-gray-500 mt-1 uppercase tracking-wider text-center">RailMadad<br/>General Enquiry</span>
+            <span className="text-xs font-semibold text-gray-500 mt-1 uppercase tracking-wider text-center">{t('railmadad_enquiry') || 'RailMadad General Enquiry'}</span>
           </a>
 
         </div>
