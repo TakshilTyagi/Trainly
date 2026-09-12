@@ -215,6 +215,8 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     no_nearby_station: 'Couldn\'t determine a nearby station on this route',
     select_boarding_station: 'Select Boarding Station',
     auto_matched: 'Auto-matched',
+    search_station: 'Search station...',
+    no_stations_found: 'No stations found',
 },
   HI: {
     app_name: 'ट्रेनली',
@@ -414,6 +416,8 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     no_nearby_station: 'इस मार्ग पर कोई नजदीकी स्टेशन नहीं मिला',
     select_boarding_station: 'बोर्डिंग स्टेशन चुनें',
     auto_matched: 'स्वचालित चयनित',
+    search_station: 'स्टेशन खोजें...',
+    no_stations_found: 'कोई स्टेशन नहीं मिला',
 },
   TA: {
     app_name: 'ரயில்லி',
@@ -613,6 +617,8 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     no_nearby_station: 'இந்த வழியில் அருகிலுள்ள நிலையத்தைக் கண்டறிய முடியவில்லை',
     select_boarding_station: 'ஏறும் நிலையத்தைத் தேர்ந்தெடுக்கவும்',
     auto_matched: 'தானாகப் பொருந்தியது',
+    search_station: 'நிலையத்தைத் தேடுங்கள்...',
+    no_stations_found: 'எந்த நிலையமும் கிடைக்கவில்லை',
 },
   TE: {
     app_name: 'ట్రైన్లీ',
@@ -812,6 +818,8 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     no_nearby_station: 'ఈ మార్గంలో సమీప స్టేషన్‌ను గుర్తించలేకపోయాము',
     select_boarding_station: 'బోర్డింగ్ స్టేషన్‌ను ఎంచుకోండి',
     auto_matched: 'ఆటో సరిపోలింది',
+    search_station: 'స్టేషన్ శోధించండి...',
+    no_stations_found: 'స్టేషన్లు ఏవీ కనుగొనబడలేదు',
 },
   ML: {
     app_name: 'ട്രെയിൻലി',
@@ -1011,6 +1019,8 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     no_nearby_station: 'ഈ റൂട്ടിൽ അടുത്തുള്ള സ്റ്റേഷൻ കണ്ടെത്താനായില്ല',
     select_boarding_station: 'ബോർഡിംഗ് സ്റ്റേഷൻ തിരഞ്ഞെടുക്കുക',
     auto_matched: 'സ്വയമേവ തിരഞ്ഞെടുത്തു',
+    search_station: 'സ്റ്റേഷൻ തിരയുക...',
+    no_stations_found: 'സ്റ്റേഷനുകളൊന്നും കണ്ടെത്തിയില്ല',
 }
 };
 

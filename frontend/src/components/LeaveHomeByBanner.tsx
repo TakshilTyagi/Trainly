@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Clock, MapPin, ChevronDown, Check } from 'lucide-react';
+import { Clock, MapPin, ChevronDown, Check, Search, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 export interface StationStop {
@@ -51,6 +51,7 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({
   const [selectedStationName, setSelectedStationName] = useState<string | null>(null);
   const [isStationDropdownOpen, setIsStationDropdownOpen] = useState<boolean>(false);
   const [nearestDistanceKm, setNearestDistanceKm] = useState<number | null>(null);
+  const [stationSearch, setStationSearch] = useState<string>('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on click outside
@@ -58,6 +59,7 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsStationDropdownOpen(false);
+        setStationSearch('');
       }
     };
     if (isStationDropdownOpen) {
@@ -163,6 +165,18 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({
     if (!stationsWithDistance || stationsWithDistance.length === 0) return null;
     return stationsWithDistance.find((s) => s.station_name === selectedStationName) || stationsWithDistance[0];
   }, [stationsWithDistance, selectedStationName]);
+
+  // Filtered station list based on user search query (matching English or localized names, or station code)
+  const filteredStations = useMemo(() => {
+    if (!stationSearch.trim()) return stationsWithDistance;
+    const query = stationSearch.toLowerCase().trim();
+    return stationsWithDistance.filter((stn) => {
+      const enName = (stn.station_name || '').toLowerCase();
+      const localizedName = (tStation(stn.station_name) || '').toLowerCase();
+      const code = (stn.station_code || '').toLowerCase();
+      return enName.includes(query) || localizedName.includes(query) || code.includes(query);
+    });
+  }, [stationsWithDistance, stationSearch, tStation]);
 
   // 3. Traffic / Drive-Time Fetcher: Runs on a SLOWER, fixed cadence (every 3-5 mins)
   const fetchTrafficData = useCallback(async () => {
@@ -405,7 +419,11 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({
         <div className="relative" ref={dropdownRef}>
           <button
             type="button"
-            onClick={() => setIsStationDropdownOpen(!isStationDropdownOpen)}
+            onClick={() => {
+              const nextState = !isStationDropdownOpen;
+              setIsStationDropdownOpen(nextState);
+              if (!nextState) setStationSearch('');
+            }}
             className="flex items-center space-x-1.5 text-xs font-bold text-blue-600 dark:text-cyan-400 hover:underline cursor-pointer focus:outline-none py-1 px-1.5 rounded-lg hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition-colors"
           >
             <span>{t('change_station') || 'Change'}</span>
@@ -413,48 +431,83 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({
           </button>
 
           {isStationDropdownOpen && (
-            <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700/80 py-2 z-50 max-h-72 overflow-y-auto">
-              <div className="px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800/80 mb-1.5 flex items-center justify-between">
+            <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700/80 py-2.5 z-50 flex flex-col">
+              {/* Header */}
+              <div className="px-3.5 pb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800/80 flex items-center justify-between">
                 <span>{t('select_boarding_station') || 'Select Boarding Station'}</span>
                 <span className="text-[10px] text-gray-400 font-normal">
-                  ({stationsWithDistance.length} {t('stations') || 'stations'})
+                  ({filteredStations.length}{filteredStations.length !== stationsWithDistance.length ? ` / ${stationsWithDistance.length}` : ''} {t('stations') || 'stations'})
                 </span>
               </div>
-              <div className="space-y-1 px-1.5">
-                {stationsWithDistance.map((stn) => {
-                  const isSelected = stn.station_name === activeStation?.station_name;
-                  return (
+
+              {/* Station Search Input */}
+              <div className="px-2.5 py-2 border-b border-gray-100 dark:border-gray-800/80">
+                <div className="relative flex items-center">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 text-gray-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={stationSearch}
+                    onChange={(e) => setStationSearch(e.target.value)}
+                    placeholder={t('search_station') || 'Search station...'}
+                    autoFocus
+                    className="w-full pl-8 pr-7 py-1.5 text-xs bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700/60 rounded-xl text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all"
+                  />
+                  {stationSearch && (
                     <button
-                      key={stn.station_name}
                       type="button"
-                      onClick={() => {
-                        setSelectedStationName(stn.station_name);
-                        setIsStationDropdownOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer ${
-                        isSelected
-                          ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800'
-                          : 'text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800/80'
-                      }`}
+                      onClick={() => setStationSearch('')}
+                      className="absolute right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-0.5 rounded cursor-pointer"
+                      aria-label="Clear search"
                     >
-                      <div className="flex items-center space-x-2 min-w-0 pr-2">
-                        <span className="truncate">{tStation(stn.station_name)}</span>
-                        {stn.distanceKm !== null && stn.distanceKm !== undefined && (
-                          <span
-                            className={`text-[11px] font-medium shrink-0 ${
-                              isSelected
-                                ? 'text-emerald-600 dark:text-emerald-400'
-                                : 'text-gray-500 dark:text-gray-400'
-                            }`}
-                          >
-                            ({stn.distanceKm} km)
-                          </span>
-                        )}
-                      </div>
-                      {isSelected && <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                      <X className="w-3 h-3" />
                     </button>
-                  );
-                })}
+                  )}
+                </div>
+              </div>
+
+              {/* Station List */}
+              <div className="space-y-1 px-1.5 pt-1.5 max-h-60 overflow-y-auto">
+                {filteredStations.length > 0 ? (
+                  filteredStations.map((stn) => {
+                    const isSelected = stn.station_name === activeStation?.station_name;
+                    return (
+                      <button
+                        key={stn.station_name}
+                        type="button"
+                        onClick={() => {
+                          setSelectedStationName(stn.station_name);
+                          setIsStationDropdownOpen(false);
+                          setStationSearch('');
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800'
+                            : 'text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800/80'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2 min-w-0 pr-2">
+                          <span className="truncate">{tStation(stn.station_name)}</span>
+                          {stn.distanceKm !== null && stn.distanceKm !== undefined && (
+                            <span
+                              className={`text-[11px] font-medium shrink-0 ${
+                                isSelected
+                                  ? 'text-emerald-600 dark:text-emerald-400'
+                                  : 'text-gray-500 dark:text-gray-400'
+                              }`}
+                            >
+                              ({stn.distanceKm} km)
+                            </span>
+                          )}
+                        </div>
+                        {isSelected && <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="py-5 text-center text-xs text-gray-400 dark:text-gray-500 font-medium">
+                    {t('no_stations_found') || 'No stations found'}
+                  </div>
+                )}
               </div>
             </div>
           )}
