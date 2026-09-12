@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Clock, CheckCircle2, ShieldCheck, ExternalLink, Activity } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { apiUrl } from '../api/config';
 
 interface ControlRoomData {
   summary: {
@@ -63,10 +64,17 @@ export const ControlRoomPage: React.FC<{ onSelectTrain: (trainNo: string) => voi
 
   const fetchControlRoom = async () => {
     try {
-      const res = await fetch('/api/control-room', { cache: 'no-store' });
+      const res = await fetch(apiUrl('/api/control-room'), { cache: 'no-store' });
       if (res.ok) {
-        const json = await res.json();
-        setData(json);
+        const text = await res.text();
+        try {
+          const json = JSON.parse(text);
+          if (json && json.summary) {
+            setData(json);
+          }
+        } catch (parseErr) {
+          console.error('Non-JSON response for control room:', text.slice(0, 100));
+        }
       }
     } catch (e) {
       console.error('Failed to load control room data:', e);

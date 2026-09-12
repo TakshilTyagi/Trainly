@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowUpDown, ChevronDown, ChevronUp, Sparkles, Gauge, ArrowRight, Search, Filter } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { apiUrl } from '../api/config';
 
 export type FleetStatusFilter = 'ALL' | 'ON_TIME' | 'DELAYED' | 'NOT_DEPARTED' | 'ARRIVED';
 
@@ -81,11 +82,18 @@ export const FleetPage: React.FC<FleetPageProps> = ({ onSelectTrain }) => {
 
   const fetchFleet = async () => {
     try {
-      const res = await fetch('/api/fleet');
+      const res = await fetch(apiUrl('/api/fleet'));
       if (res.ok) {
-        const data = await res.json();
-        setFleet(data);
-        setLastUpdatedSecs(data[0]?.updated_secs_ago ?? 1);
+        const text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          if (Array.isArray(data) && data.length > 0) {
+            setFleet(data);
+            setLastUpdatedSecs(data[0]?.updated_secs_ago ?? 1);
+          }
+        } catch (parseErr) {
+          console.error('Non-JSON response from fleet API:', text.slice(0, 100));
+        }
       }
     } catch (e) {
       console.error('Failed to fetch fleet:', e);

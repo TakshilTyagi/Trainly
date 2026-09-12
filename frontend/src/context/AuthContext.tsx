@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { apiUrl } from '../api/config';
 
 export interface User {
   id: string;
@@ -70,15 +71,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(apiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
       if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
-        return true;
+        const text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          setUser(data.user);
+          return true;
+        } catch (e) {
+          console.error('Non-JSON response for login:', text.slice(0, 100));
+        }
       }
       // If server explicitly rejected password with 401
       if (res.status === 401) {
@@ -111,15 +117,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (name: string, email: string, password: string): Promise<boolean> => {
     try {
-      const res = await fetch('/api/auth/signup', {
+      const res = await fetch(apiUrl('/api/auth/signup'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
       });
       if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
-        return true;
+        const text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          setUser(data.user);
+          return true;
+        } catch (e) {
+          console.error('Non-JSON response for signup:', text.slice(0, 100));
+        }
       }
       if (res.status === 400) {
         return false;
@@ -148,11 +159,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const continueAsGuest = async () => {
     try {
-      const res = await fetch('/api/auth/guest', { method: 'POST' });
+      const res = await fetch(apiUrl('/api/auth/guest'), { method: 'POST' });
       if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
-        return;
+        const text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          setUser(data.user);
+          return;
+        } catch (e) {
+          // ignore
+        }
       }
     } catch (e) {
       // ignore
@@ -180,7 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (name: string, email: string): Promise<boolean> => {
     if (!user) return false;
     try {
-      await fetch('/api/auth/update-profile', {
+      await fetch(apiUrl('/api/auth/update-profile'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: user.id, name, email }),
@@ -195,7 +211,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const changePassword = async (oldPass: string, newPass: string): Promise<boolean> => {
     if (!user) return false;
     try {
-      const res = await fetch('/api/auth/change-password', {
+      const res = await fetch(apiUrl('/api/auth/change-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: user.id, old_password: oldPass, new_password: newPass }),

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Sparkles, ArrowUp, Bot, History, Plus, X, Trash2, Clock, MessageSquare, Check, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { apiUrl } from '../api/config';
 
 export interface Message {
   id: string;
@@ -510,7 +511,7 @@ export const AssistantPage: React.FC = () => {
     setIsSending(true);
 
     try {
-      const res = await fetch('/api/assistant/query', {
+      const res = await fetch(apiUrl('/api/assistant/query'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -3,6 +3,7 @@ import { ChevronDown, Sparkles, Gauge, Compass, ShieldCheck, Search } from 'luci
 import { useLanguage } from '../context/LanguageContext';
 import { NavigationMap } from '../components/NavigationMap';
 import { FloatingAssistantWidget } from '../components/FloatingAssistantWidget';
+import { apiUrl } from '../api/config';
 
 interface TrackerPageProps {
   initialTrain?: string;
@@ -128,13 +129,20 @@ export const TrackerPage: React.FC<TrackerPageProps> = ({ initialTrain = '22490'
   // Fetch train journey and live ETA from backend
   const fetchTrainData = async (trainNo: string) => {
     try {
-      const res = await fetch(`/api/train/${trainNo}/journey`);
+      const res = await fetch(apiUrl(`/api/train/${trainNo}/journey`));
       if (res.ok) {
-        const data: JourneyData = await res.json();
-        setJourneyData(data);
-        const currIdx = data.journey_log.findIndex(s => s.status_type === 'current');
-        if (currIdx !== -1) {
-          setActiveStationIdx(currIdx);
+        const text = await res.text();
+        try {
+          const data: JourneyData = JSON.parse(text);
+          if (data && data.journey_log) {
+            setJourneyData(data);
+            const currIdx = data.journey_log.findIndex(s => s.status_type === 'current');
+            if (currIdx !== -1) {
+              setActiveStationIdx(currIdx);
+            }
+          }
+        } catch (parseErr) {
+          console.error('Non-JSON response for train journey:', text.slice(0, 100));
         }
       }
     } catch (e) {

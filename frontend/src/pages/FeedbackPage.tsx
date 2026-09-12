@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { apiUrl } from '../api/config';
 
 const TRAIN_OPTIONS = [
   { no: '22490', label: '22490 Vande Bharat Express' },
@@ -90,10 +91,15 @@ export const FeedbackPage: React.FC = () => {
 
   const fetchReports = async (trainNo: string) => {
     try {
-      const res = await fetch(`/api/feedback/${trainNo}`);
+      const res = await fetch(apiUrl(`/api/feedback/${trainNo}`));
       if (res.ok) {
-        const data = await res.json();
-        setReports(data.reports || []);
+        const text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          setReports(data.reports || []);
+        } catch (e) {
+          console.error('Non-JSON response for feedback reports:', text.slice(0, 100));
+        }
       }
     } catch (e) {
       console.error('Failed to load feedback:', e);
@@ -118,7 +124,7 @@ export const FeedbackPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/feedback', {
+      const res = await fetch(apiUrl('/api/feedback'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -222,7 +228,7 @@ export const FeedbackPage: React.FC = () => {
 
     // 3. Sync with backend API
     try {
-      await fetch(`/api/feedback/${reportId}/vote`, {
+      await fetch(apiUrl(`/api/feedback/${reportId}/vote`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

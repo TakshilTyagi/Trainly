@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { apiUrl } from '../api/config';
 
 export interface Message {
   id: string;
@@ -462,7 +463,7 @@ export function useChatAssistant(defaultTrainNo?: string) {
     setIsSending(true);
 
     try {
-      const res = await fetch('/api/assistant/query', {
+      const res = await fetch(apiUrl('/api/assistant/query'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
