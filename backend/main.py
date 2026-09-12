@@ -26,18 +26,22 @@ init_db()
 async def lifespan(app: FastAPI):
     """
     FastAPI lifespan manager:
-    Automatically launches the continuous real-time background poller on server startup.
-    Runs independently of any frontend or client requests.
+    Automatically launches the continuous real-time background poller on server startup
+    (skipped on serverless platforms like Vercel where instances freeze between requests).
     """
-    logger.info("[ServerLifespan] Starting Trainly backend server with automated real-time poller...")
-    poller_task = asyncio.create_task(run_live_data_background_poller(interval_seconds=10.0))
-    yield
-    logger.info("[ServerLifespan] Shutting down Trainly backend server and stopping poller...")
-    poller_task.cancel()
-    try:
-        await poller_task
-    except asyncio.CancelledError:
-        pass
+    if not os.getenv("VERCEL"):
+        logger.info("[ServerLifespan] Starting Trainly backend server with automated real-time poller...")
+        poller_task = asyncio.create_task(run_live_data_background_poller(interval_seconds=10.0))
+        yield
+        logger.info("[ServerLifespan] Shutting down Trainly backend server and stopping poller...")
+        poller_task.cancel()
+        try:
+            await poller_task
+        except asyncio.CancelledError:
+            pass
+    else:
+        logger.info("[ServerLifespan] Vercel Serverless environment detected: on-demand real-time ingestion active.")
+        yield
 
 app = FastAPI(
     title="Trainly API",

@@ -4,11 +4,22 @@ Stores users, passenger delay feedback reports, confirmations, and bottleneck st
 """
 
 import os
+import shutil
 import sqlite3
 import hashlib
 from datetime import datetime, timedelta
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trainly.db")
+# In Vercel serverless environment, local filesystem is read-only except /tmp
+if os.getenv("VERCEL"):
+    SOURCE_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trainly.db")
+    DB_PATH = "/tmp/trainly.db"
+    if not os.path.exists(DB_PATH) and os.path.exists(SOURCE_DB):
+        try:
+            shutil.copyfile(SOURCE_DB, DB_PATH)
+        except Exception:
+            pass
+else:
+    DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trainly.db")
 
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
