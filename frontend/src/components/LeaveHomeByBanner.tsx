@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Clock, MapPin, ChevronDown, Check } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -51,6 +51,22 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({
   const [selectedStationName, setSelectedStationName] = useState<string | null>(null);
   const [isStationDropdownOpen, setIsStationDropdownOpen] = useState<boolean>(false);
   const [nearestDistanceKm, setNearestDistanceKm] = useState<number | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsStationDropdownOpen(false);
+      }
+    };
+    if (isStationDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isStationDropdownOpen]);
 
   // Traffic / Drive-time state
   const [driveTimeMinutes, setDriveTimeMinutes] = useState<number | null>(null);
@@ -247,9 +263,9 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({
   if (!stationsWithDistance || stationsWithDistance.length === 0) return null;
 
   return (
-    <div className="w-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl rounded-3xl p-5 sm:p-6 border border-emerald-200/60 dark:border-emerald-900/40 shadow-xl shadow-emerald-500/5 relative overflow-hidden flex flex-col mb-6 mt-2">
+    <div className="w-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl rounded-3xl p-5 sm:p-6 border border-emerald-200/60 dark:border-emerald-900/40 shadow-xl shadow-emerald-500/5 relative flex flex-col mb-6 mt-2 z-20">
       {/* Visual Accent Top Bar - Distinct Emerald to Teal Gradient */}
-      <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-emerald-500 via-teal-400 to-green-500"></div>
+      <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-emerald-500 via-teal-400 to-green-500 rounded-t-3xl pointer-events-none"></div>
 
       {/* Main Content Row */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -386,49 +402,60 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({
         </div>
 
         {/* Change Boarding Station Dropdown */}
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
           <button
             type="button"
             onClick={() => setIsStationDropdownOpen(!isStationDropdownOpen)}
-            className="flex items-center space-x-1 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer focus:outline-none"
+            className="flex items-center space-x-1.5 text-xs font-bold text-blue-600 dark:text-cyan-400 hover:underline cursor-pointer focus:outline-none py-1 px-1.5 rounded-lg hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition-colors"
           >
             <span>{t('change_station') || 'Change'}</span>
-            <ChevronDown className={`w-3 h-3 transition-transform ${isStationDropdownOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isStationDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {isStationDropdownOpen && (
-            <div className="absolute right-0 bottom-full mb-2 w-64 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 py-1.5 z-50 max-h-56 overflow-y-auto">
-              <div className="px-3 py-1 text-[10px] font-bold uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800 mb-1">
-                {t('select_boarding_station') || 'Select Boarding Station'}
+            <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700/80 py-2 z-50 max-h-72 overflow-y-auto">
+              <div className="px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800/80 mb-1.5 flex items-center justify-between">
+                <span>{t('select_boarding_station') || 'Select Boarding Station'}</span>
+                <span className="text-[10px] text-gray-400 font-normal">
+                  ({stationsWithDistance.length} {t('stations') || 'stations'})
+                </span>
               </div>
-              {stationsWithDistance.map((stn) => {
-                const isSelected = stn.station_name === activeStation?.station_name;
-                return (
-                  <button
-                    key={stn.station_name}
-                    type="button"
-                    onClick={() => {
-                      setSelectedStationName(stn.station_name);
-                      setIsStationDropdownOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-1.5">
-                      <span>{tStation(stn.station_name)}</span>
-                      {stn.distanceKm !== null && stn.distanceKm !== undefined && (
-                        <span className="text-[10px] text-gray-400 font-normal">
-                          ({stn.distanceKm} km)
-                        </span>
-                      )}
-                    </div>
-                    {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
-                  </button>
-                );
-              })}
+              <div className="space-y-1 px-1.5">
+                {stationsWithDistance.map((stn) => {
+                  const isSelected = stn.station_name === activeStation?.station_name;
+                  return (
+                    <button
+                      key={stn.station_name}
+                      type="button"
+                      onClick={() => {
+                        setSelectedStationName(stn.station_name);
+                        setIsStationDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800'
+                          : 'text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800/80'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2 min-w-0 pr-2">
+                        <span className="truncate">{tStation(stn.station_name)}</span>
+                        {stn.distanceKm !== null && stn.distanceKm !== undefined && (
+                          <span
+                            className={`text-[11px] font-medium shrink-0 ${
+                              isSelected
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-gray-500 dark:text-gray-400'
+                            }`}
+                          >
+                            ({stn.distanceKm} km)
+                          </span>
+                        )}
+                      </div>
+                      {isSelected && <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
