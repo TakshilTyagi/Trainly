@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Navigation, Train, MessageSquare, AlertCircle, LayoutDashboard } from 'lucide-react';
+import { X, Navigation, Train, MessageSquare, AlertCircle, LayoutDashboard, Shield } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { TrainlyLogo } from './TrainlyLogo';
 
@@ -22,6 +22,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'tracker', label: t('nav_tracker'), icon: Navigation },
     { id: 'fleet', label: t('nav_fleet'), icon: Train },
     { id: 'assistant', label: t('nav_assistant'), icon: MessageSquare },
+    { id: 'safety', label: t('nav_safety') || 'Safety', icon: Shield },
     { id: 'feedback', label: t('nav_feedback'), icon: AlertCircle },
     { id: 'control-room', label: t('nav_control_room'), icon: LayoutDashboard },
   ];

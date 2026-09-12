@@ -3,6 +3,7 @@ import { ChevronDown, Sparkles, Gauge, Compass, ShieldCheck, Search } from 'luci
 import { useLanguage } from '../context/LanguageContext';
 import { NavigationMap } from '../components/NavigationMap';
 import { FloatingAssistantWidget } from '../components/FloatingAssistantWidget';
+import { LeaveHomeByBanner } from '../components/LeaveHomeByBanner';
 import { apiUrl } from '../api/config';
 import { DEFAULT_JOURNEY_22490 } from '../data/initialData';
 
@@ -361,6 +362,9 @@ export const TrackerPage: React.FC<TrackerPageProps> = ({ initialTrain = '22490'
         </div>
 
       </div>
+
+      {/* Leave Home By Banner */}
+      <LeaveHomeByBanner boardingStation={journeyData.journey_log[0] || null} />
 
       {/* 2-Column Responsive Split Grid: Both Columns Start and End at Exact Same Level */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-stretch">

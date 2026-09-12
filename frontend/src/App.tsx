@@ -12,6 +12,7 @@ import { FleetPage } from './pages/FleetPage';
 import { AssistantPage } from './pages/AssistantPage';
 import { FeedbackPage } from './pages/FeedbackPage';
 import { ControlRoomPage } from './pages/ControlRoomPage';
+import { SafetyPage } from './pages/SafetyPage';
 
 const MainLayout: React.FC = () => {
   const { user } = useAuth();
@@ -105,6 +106,7 @@ const MainLayout: React.FC = () => {
         )}
         {currentPage === 'fleet' && <FleetPage onSelectTrain={handleSelectTrainFromFleet} />}
         {currentPage === 'assistant' && <AssistantPage />}
+        {currentPage === 'safety' && <SafetyPage />}
         {currentPage === 'feedback' && <FeedbackPage />}
         {currentPage === 'control-room' && <ControlRoomPage onSelectTrain={handleSelectTrainFromFleet} />}
       </main>
