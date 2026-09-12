@@ -364,7 +364,7 @@ export const TrackerPage: React.FC<TrackerPageProps> = ({ initialTrain = '22490'
       </div>
 
       {/* Leave Home By Banner */}
-      <LeaveHomeByBanner boardingStation={journeyData.journey_log[0] || null} />
+      {journeyData && <LeaveHomeByBanner journeyLog={journeyData.journey_log} />}
 
       {/* 2-Column Responsive Split Grid: Both Columns Start and End at Exact Same Level */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-stretch">

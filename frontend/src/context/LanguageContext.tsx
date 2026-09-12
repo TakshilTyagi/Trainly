@@ -210,6 +210,11 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     rpf_womens_security: 'RPF Women\'s Security',
     grp_helpline: 'GRP Helpline State Police',
     railmadad_enquiry: 'RailMadad General Enquiry',
+    nearest_station: 'Nearest Station',
+    change_station: 'Change',
+    no_nearby_station: 'Couldn\'t determine a nearby station on this route',
+    select_boarding_station: 'Select Boarding Station',
+    auto_matched: 'Auto-matched',
 },
   HI: {
     app_name: 'ट्रेनली',
@@ -404,6 +409,11 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     rpf_womens_security: 'आरपीएफ महिला सुरक्षा',
     grp_helpline: 'जीआरपी हेल्पलाइन राजकीय पुलिस',
     railmadad_enquiry: 'रेल मदद सामान्य पूछताछ',
+    nearest_station: 'निकटतम स्टेशन',
+    change_station: 'बदलें',
+    no_nearby_station: 'इस मार्ग पर कोई नजदीकी स्टेशन नहीं मिला',
+    select_boarding_station: 'बोर्डिंग स्टेशन चुनें',
+    auto_matched: 'स्वचालित चयनित',
 },
   TA: {
     app_name: 'ரயில்லி',
@@ -598,6 +608,11 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     rpf_womens_security: 'RPF பெண்கள் பாதுகாப்பு',
     grp_helpline: 'GRP மாநில ரயில்வே காவல்',
     railmadad_enquiry: 'ரயில்மதத் பொது விசாரணை',
+    nearest_station: 'அருகிலுள்ள நிலையம்',
+    change_station: 'மாற்று',
+    no_nearby_station: 'இந்த வழியில் அருகிலுள்ள நிலையத்தைக் கண்டறிய முடியவில்லை',
+    select_boarding_station: 'ஏறும் நிலையத்தைத் தேர்ந்தெடுக்கவும்',
+    auto_matched: 'தானாகப் பொருந்தியது',
 },
   TE: {
     app_name: 'ట్రైన్లీ',
@@ -792,6 +807,11 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     rpf_womens_security: 'RPF మహిళా భద్రత',
     grp_helpline: 'GRP హెల్ప్‌లైన్ రాష్ట్ర రైల్వే పోలీస్',
     railmadad_enquiry: 'రైల్ మదద్ సాధారణ విచారణ',
+    nearest_station: 'సమీప స్టేషన్',
+    change_station: 'మార్చండి',
+    no_nearby_station: 'ఈ మార్గంలో సమీప స్టేషన్‌ను గుర్తించలేకపోయాము',
+    select_boarding_station: 'బోర్డింగ్ స్టేషన్‌ను ఎంచుకోండి',
+    auto_matched: 'ఆటో సరిపోలింది',
 },
   ML: {
     app_name: 'ട്രെയിൻലി',
@@ -986,6 +1006,11 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
     rpf_womens_security: 'RPF വനിതാ സുരക്ഷ',
     grp_helpline: 'GRP ഹെൽപ്പ്‌ലൈൻ റെയിൽവേ പോലീസ്',
     railmadad_enquiry: 'റെയിൽമദദ് പൊതു അന്വേഷണം',
+    nearest_station: 'ഏറ്റവും അടുത്തുള്ള സ്റ്റേഷൻ',
+    change_station: 'മാറ്റുക',
+    no_nearby_station: 'ഈ റൂട്ടിൽ അടുത്തുള്ള സ്റ്റേഷൻ കണ്ടെത്താനായില്ല',
+    select_boarding_station: 'ബോർഡിംഗ് സ്റ്റേഷൻ തിരഞ്ഞെടുക്കുക',
+    auto_matched: 'സ്വയമേവ തിരഞ്ഞെടുത്തു',
 }
 };
 
