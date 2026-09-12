@@ -225,6 +225,19 @@ export function generateSessionTitle(
 export function useChatAssistant(defaultTrainNo?: string) {
   const { language } = useLanguage();
   const { user } = useAuth();
+  const [userLoc, setUserLoc] = useState<{ lat: number; lon: number } | null>(null);
+
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserLoc({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        },
+        () => {},
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+      );
+    }
+  }, []);
 
   const getDefaultMessages = useCallback((): Message[] => {
     const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -469,6 +482,8 @@ export function useChatAssistant(defaultTrainNo?: string) {
         body: JSON.stringify({
           query: query.trim(),
           active_train_no: overrideTrainNo || defaultTrainNo || null,
+          user_lat: userLoc?.lat,
+          user_lon: userLoc?.lon,
           lang: language,
         }),
       });

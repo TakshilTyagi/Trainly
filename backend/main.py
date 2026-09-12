@@ -81,6 +81,7 @@ async def vercel_path_rewrite_middleware(request, call_next):
 
 # API Health Check Endpoint
 @app.get("/api")
+@app.get("/api/")
 @app.get("/api/health")
 def api_health():
     return {

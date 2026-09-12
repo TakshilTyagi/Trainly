@@ -235,6 +235,19 @@ const SESSION_STORAGE_KEY_ACTIVE = 'trainly_active_chat_session_id';
 export const AssistantPage: React.FC = () => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
+  const [userLoc, setUserLoc] = useState<{ lat: number; lon: number } | null>(null);
+
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserLoc({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        },
+        () => {},
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+      );
+    }
+  }, []);
 
   const getDefaultMessages = (): Message[] => {
     const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -517,6 +530,8 @@ export const AssistantPage: React.FC = () => {
         body: JSON.stringify({
           query: query.trim(),
           active_train_no: '22490',
+          user_lat: userLoc?.lat,
+          user_lon: userLoc?.lon,
           lang: language,
         }),
       });
