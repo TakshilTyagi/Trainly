@@ -96,6 +96,13 @@ app.include_router(auth_router)
 app.include_router(assistant_router)
 app.include_router(control_room_router)
 
+# SOS Alert Direct Endpoint (Safety page & mobile clients)
+from backend.routes.control_room import trigger_sos_alert, SOSCreatePayload
+
+@app.post("/api/sos/alert")
+def create_sos_alert_alias(payload: SOSCreatePayload):
+    return trigger_sos_alert(payload)
+
 # Mount frontend static files if built
 frontend_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")
 if os.path.exists(frontend_dist):

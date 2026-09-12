@@ -6,9 +6,17 @@ All data is recalculated fresh from the live telemetry engine on every request.
 
 import logging
 from datetime import datetime
-from fastapi import APIRouter, Response
+from typing import Optional
+from pydantic import BaseModel
+from fastapi import APIRouter, Response, HTTPException
 from backend.providers.live_ntes import get_data_provider
-from backend.database import get_control_room_data, get_feedback_for_train
+from backend.database import (
+    get_control_room_data,
+    get_feedback_for_train,
+    get_sos_alerts,
+    add_sos_alert,
+    update_sos_alert_status
+)
 
 logger = logging.getLogger("trainly.control_room")
 if not logger.handlers:
@@ -19,6 +27,36 @@ if not logger.handlers:
     logger.setLevel(logging.INFO)
 
 router = APIRouter(prefix="/api/control-room", tags=["Control Room"])
+
+def format_time_ago(iso_ts_str: str) -> str:
+    try:
+        dt = datetime.fromisoformat(iso_ts_str.replace("Z", "+00:00"))
+        now_dt = datetime.now(dt.tzinfo) if dt.tzinfo else datetime.utcnow()
+        diff = max(0, (now_dt - dt).total_seconds())
+        if diff < 60:
+            return "Just now" if diff < 15 else f"{int(diff)}s ago"
+        elif diff < 3600:
+            return f"{int(diff // 60)}m ago"
+        elif diff < 86400:
+            return f"{int(diff // 3600)}h ago"
+        else:
+            return f"{int(diff // 86400)}d ago"
+    except Exception:
+        return "Recently"
+
+class SOSStatusUpdate(BaseModel):
+    status: str
+    official_name: Optional[str] = "Railway Official"
+
+class SOSCreatePayload(BaseModel):
+    train_no: Optional[str] = "Unknown"
+    train_name: Optional[str] = "Unknown"
+    coach: Optional[str] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    notified_destinations: Optional[str] = "RPF control room, TT, nearby users"
+    user_id: Optional[str] = "usr_anonymous"
+    user_name: Optional[str] = "Passenger"
 
 @router.get("")
 def get_control_room_metrics(response: Response):
@@ -361,8 +399,17 @@ def get_control_room_metrics(response: Response):
     # Sort bottlenecks by avg_delay_min descending so highest delay corridors appear first
     dynamic_bottlenecks.sort(key=lambda b: b["avg_delay_min"], reverse=True)
 
-    # 4. Fetch live recent passenger reports from SQLite
+    # 4. Fetch live recent passenger reports and SOS alerts from SQLite
     db_data = get_control_room_data()
+    raw_sos = db_data.get("sos_alerts", [])
+    formatted_sos = []
+    for s in raw_sos:
+        s_copy = dict(s)
+        created_str = s_copy.get("created_at", "")
+        s_copy["time_ago"] = format_time_ago(created_str) if created_str else "Recently"
+        formatted_sos.append(s_copy)
+
+    active_sos_count = sum(1 for s in formatted_sos if s.get("status") == "active")
 
     # 5. Live sample API response reflecting current 22490 telemetry
     t_22490 = fleet_by_no.get("22490", fleet[0] if fleet else {})
@@ -385,7 +432,7 @@ def get_control_room_metrics(response: Response):
     logger.info(
         f"[ControlRoom:Sync] Snapshot at {now_str} | "
         f"Avg Fleet Delay: +{avg_delay}m | On-Time: {on_time_count}/{len(fleet)} | "
-        f"Alerts: {len(alerts)} | Live Fleet: {fleet_summary_str}"
+        f"Alerts: {len(alerts)} | SOS Active: {active_sos_count} | Live Fleet: {fleet_summary_str}"
     )
 
     latest_updated_iso = fleet[0].get("last_updated") if (fleet and fleet[0].get("last_updated")) else datetime.utcnow().isoformat()
@@ -399,12 +446,63 @@ def get_control_room_metrics(response: Response):
             "on_time_count": on_time_count,
             "total_trains": len(fleet),
             "active_alerts_count": len(alerts),
+            "active_sos_alerts_count": active_sos_count,
             "avg_confidence_pct": avg_confidence
         },
         "alerts": alerts,
         "fleet_table": fleet,
         "bottlenecks": dynamic_bottlenecks,
         "recent_feedback": db_data["recent_reports"],
+        "sos_alerts": formatted_sos,
         "api_access": api_sample
+    }
+
+@router.post("/sos/{alert_id}/status")
+@router.patch("/sos/{alert_id}/status")
+def update_sos_status(alert_id: int, payload: SOSStatusUpdate):
+    """
+    Allows a railway official to update the status of an active SOS alert.
+    Marks as 'acknowledged' or 'resolved' and records the official's name and timestamp.
+    """
+    valid_statuses = ["active", "acknowledged", "resolved"]
+    if payload.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status '{payload.status}'. Must be one of {valid_statuses}")
+
+    updated = update_sos_alert_status(alert_id, payload.status, payload.official_name)
+    if not updated:
+        raise HTTPException(status_code=404, detail=f"SOS Alert #{alert_id} not found")
+
+    updated_copy = dict(updated)
+    updated_copy["time_ago"] = format_time_ago(updated_copy.get("created_at", ""))
+    logger.info(f"[ControlRoom:SOS] Alert #{alert_id} marked as '{payload.status}' by '{payload.official_name}'")
+    return {
+        "success": True,
+        "message": f"Alert #{alert_id} updated to '{payload.status}'",
+        "alert": updated_copy
+    }
+
+@router.post("/sos")
+def trigger_sos_alert(payload: SOSCreatePayload):
+    """
+    Trigger a new SOS alert (from Safety page or emergency client).
+    Persists to SQLite sos_alerts table and routes to Control Room.
+    """
+    new_alert = add_sos_alert(
+        train_no=payload.train_no,
+        train_name=payload.train_name,
+        coach=payload.coach,
+        lat=payload.lat,
+        lon=payload.lon,
+        notified_destinations=payload.notified_destinations,
+        user_id=payload.user_id,
+        user_name=payload.user_name
+    )
+    alert_copy = dict(new_alert)
+    alert_copy["time_ago"] = "Just now"
+    logger.warning(f"[ControlRoom:SOS:TRIGGER] New SOS Alert on Train {payload.train_no} ({payload.coach or 'No coach'}) at ({payload.lat}, {payload.lon})")
+    return {
+        "success": True,
+        "message": "SOS Alert successfully dispatched to RPF control room and local teams",
+        "alert": alert_copy
     }
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Clock, CheckCircle2, ShieldCheck, ExternalLink, Activity } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle2, ShieldCheck, ExternalLink, Activity, ShieldAlert, MapPin, Radio, Check } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import { apiUrl } from '../api/config';
 
 interface ControlRoomData {
@@ -52,6 +53,23 @@ interface ControlRoomData {
     user_name: string;
     confirmations: number;
   }>;
+  sos_alerts?: Array<{
+    id: number;
+    train_no: string;
+    train_name: string;
+    coach?: string | null;
+    lat?: number | null;
+    lon?: number | null;
+    status: 'active' | 'acknowledged' | 'resolved';
+    notified_destinations: string;
+    user_id?: string;
+    user_name?: string;
+    acknowledged_by?: string | null;
+    resolved_by?: string | null;
+    created_at: string;
+    updated_at: string;
+    time_ago?: string;
+  }>;
   api_access?: {
     endpoint: string;
     sample_response: Record<string, any>;
@@ -60,7 +78,59 @@ interface ControlRoomData {
 
 export const ControlRoomPage: React.FC<{ onSelectTrain: (trainNo: string) => void }> = ({ onSelectTrain }) => {
   const { t, tStation, tTrainName, tSectionName, tStatusLabel, tDynamic, tAlertTitle, tAlertIssue, tPassengerReport, tTimeAgo } = useLanguage();
+  const { user } = useAuth();
   const [data, setData] = useState<ControlRoomData | null>(null);
+  const [updatingAlertId, setUpdatingAlertId] = useState<number | null>(null);
+
+  const handleUpdateSOSStatus = async (alertId: number, nextStatus: 'acknowledged' | 'resolved') => {
+    setUpdatingAlertId(alertId);
+    const officialTitle = user?.name ? `${user.name} (${user.role === 'railway_official' ? 'Official' : 'Staff'})` : 'Railway Official';
+    
+    // Optimistic UI update
+    setData((prev) => {
+      if (!prev || !prev.sos_alerts) return prev;
+      return {
+        ...prev,
+        sos_alerts: prev.sos_alerts.map((a) =>
+          a.id === alertId
+            ? {
+                ...a,
+                status: nextStatus,
+                acknowledged_by: nextStatus === 'acknowledged' ? officialTitle : a.acknowledged_by,
+                resolved_by: nextStatus === 'resolved' ? officialTitle : a.resolved_by,
+              }
+            : a
+        ),
+      };
+    });
+
+    try {
+      const res = await fetch(apiUrl(`/api/control-room/sos/${alertId}/status`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: nextStatus,
+          official_name: officialTitle,
+        }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.alert) {
+          setData((prev) => {
+            if (!prev || !prev.sos_alerts) return prev;
+            return {
+              ...prev,
+              sos_alerts: prev.sos_alerts.map((a) => (a.id === alertId ? { ...a, ...json.alert } : a)),
+            };
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update SOS alert status:', err);
+    } finally {
+      setUpdatingAlertId(null);
+    }
+  };
 
   const fetchControlRoom = async () => {
     try {
@@ -412,6 +482,227 @@ export const ControlRoomPage: React.FC<{ onSelectTrain: (trainNo: string) => voi
           </div>
         </div>
 
+      </div>
+
+      {/* 5. SOS Emergency Alerts Panel (RPF / TT / Passenger Dispatch Feed) */}
+      <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm space-y-4 relative overflow-hidden">
+        {/* Accent Top Bar - Crimson to Rose to Amber Gradient */}
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-rose-600 via-red-500 to-amber-500"></div>
+
+        {/* Panel Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-gray-100 dark:border-gray-800/80">
+          <div className="flex items-center space-x-3">
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-rose-500 to-red-600 text-white flex items-center justify-center shadow-md shadow-rose-500/25 shrink-0">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2.5">
+                <h2 className="text-base font-black text-gray-900 dark:text-white tracking-tight">
+                  {t('sos_alerts') || 'SOS Alerts'}
+                </h2>
+                {((data.sos_alerts?.filter((a) => a.status === 'active').length || 0) > 0) ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-600 dark:bg-rose-400 mr-1.5 animate-ping"></span>
+                    {data.sos_alerts?.filter((a) => a.status === 'active').length} {t('active_now') || 'Active'}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600 dark:text-emerald-400" />
+                    {t('all_resolved') || 'All Resolved'}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium mt-0.5">
+                {t('sos_panel_subtitle') || 'Passenger emergency triggers routed to RPF control room, train conductors & nearby users'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 text-[11px] font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 px-3 py-1.5 rounded-xl border border-rose-200/60 dark:border-rose-900/40 shrink-0">
+            <Radio className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 animate-pulse" />
+            <span>{t('live_dispatch_channel') || 'RPF & TT Emergency Dispatch'}</span>
+          </div>
+        </div>
+
+        {/* SOS Feed / List View */}
+        {(!data.sos_alerts || data.sos_alerts.length === 0) ? (
+          <div className="py-12 flex flex-col items-center justify-center text-center p-6 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30 border border-dashed border-gray-200 dark:border-gray-800">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <h4 className="text-sm font-black text-gray-900 dark:text-white">
+              {t('no_active_sos_alerts') || 'No active SOS alerts'}
+            </h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-sm">
+              {t('sos_clear_desc') || 'All passenger safety corridors and emergency dispatch channels are currently clear.'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {data.sos_alerts.map((alert) => {
+              const isActive = alert.status === 'active';
+              const isAck = alert.status === 'acknowledged';
+              const isResolved = alert.status === 'resolved';
+
+              return (
+                <div
+                  key={alert.id}
+                  className={`p-4 rounded-2xl border transition-all shadow-2xs ${
+                    isActive
+                      ? 'bg-rose-50/50 dark:bg-rose-950/25 border-rose-200 dark:border-rose-900/60 ring-1 ring-rose-500/20'
+                      : isAck
+                      ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40'
+                      : 'bg-gray-50/60 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800/80 opacity-85'
+                  }`}
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    
+                    {/* Left: Core Alert Info */}
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Status Badge */}
+                        {isActive && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white mr-1.5 animate-ping"></span>
+                            {t('status_active') || 'ACTIVE SOS'}
+                          </span>
+                        )}
+                        {isAck && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white shadow-xs">
+                            <Check className="w-3 h-3 mr-1" />
+                            {t('status_acknowledged') || 'ACKNOWLEDGED'}
+                          </span>
+                        )}
+                        {isResolved && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white shadow-xs">
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            {t('status_resolved') || 'RESOLVED'}
+                          </span>
+                        )}
+
+                        {/* Train Name & Number */}
+                        <span className="font-black text-xs text-gray-900 dark:text-white">
+                          {alert.train_no && alert.train_no !== 'Unknown' ? (
+                            <>
+                              <span className="text-blue-600 dark:text-cyan-400 mr-1 font-bold">#{alert.train_no}</span>
+                              {tTrainName(alert.train_name, alert.train_no, true)}
+                            </>
+                          ) : (
+                            <span className="text-gray-500 italic">Unknown Train</span>
+                          )}
+                        </span>
+
+                        {/* Coach Identifier */}
+                        {alert.coach && (
+                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-gray-200/80 dark:bg-gray-700/80 text-gray-800 dark:text-gray-200">
+                            {alert.coach}
+                          </span>
+                        )}
+
+                        {/* Relative Timestamp */}
+                        <span className="text-[11px] text-gray-400 font-medium flex items-center">
+                          <Clock className="w-3 h-3 mr-1 text-gray-400 shrink-0" />
+                          {alert.time_ago || 'Recently'}
+                        </span>
+                      </div>
+
+                      {/* Location & Routing Breakdown */}
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
+                        {/* Location / GPS Coordinates with Map Pin Link */}
+                        <div className="flex items-center space-x-1">
+                          <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          {alert.lat && alert.lon ? (
+                            <a
+                              href={`https://www.google.com/maps?q=${alert.lat},${alert.lon}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 dark:text-cyan-400 hover:underline flex items-center space-x-0.5 font-bold"
+                              title="View GPS coordinates on Google Maps"
+                            >
+                              <span>{alert.lat.toFixed(4)}°N, {alert.lon.toFixed(4)}°E</span>
+                              <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
+                            </a>
+                          ) : (
+                            <span className="text-gray-400 italic">GPS unavailable</span>
+                          )}
+                        </div>
+
+                        {/* Destinations Notified */}
+                        <div className="flex items-center space-x-1 text-[11px]">
+                          <span className="font-bold text-gray-500 dark:text-gray-400">Notified:</span>
+                          <span className="font-medium text-gray-800 dark:text-gray-200 bg-white/70 dark:bg-gray-900/60 px-2 py-0.5 rounded-md border border-gray-200/60 dark:border-gray-700/60">
+                            {alert.notified_destinations}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Official Handling Log */}
+                      {(alert.acknowledged_by || alert.resolved_by) && (
+                        <div className="text-[11px] font-medium pt-0.5">
+                          {alert.resolved_by ? (
+                            <span className="text-emerald-700 dark:text-emerald-400">
+                              ✓ Resolved by <span className="font-bold">{alert.resolved_by}</span>
+                            </span>
+                          ) : alert.acknowledged_by ? (
+                            <span className="text-amber-700 dark:text-amber-400">
+                              ✓ Acknowledged by <span className="font-bold">{alert.acknowledged_by}</span>
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right: Actions for Official */}
+                    <div className="flex items-center space-x-2 shrink-0 self-end lg:self-center">
+                      {isActive && (
+                        <>
+                          <button
+                            type="button"
+                            disabled={updatingAlertId === alert.id}
+                            onClick={() => handleUpdateSOSStatus(alert.id, 'acknowledged')}
+                            className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center space-x-1.5 disabled:opacity-50"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>{t('acknowledge_btn') || 'Acknowledge'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={updatingAlertId === alert.id}
+                            onClick={() => handleUpdateSOSStatus(alert.id, 'resolved')}
+                            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center space-x-1.5 disabled:opacity-50"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>{t('mark_resolved_btn') || 'Resolve'}</span>
+                          </button>
+                        </>
+                      )}
+
+                      {isAck && (
+                        <button
+                          type="button"
+                          disabled={updatingAlertId === alert.id}
+                          onClick={() => handleUpdateSOSStatus(alert.id, 'resolved')}
+                          className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center space-x-1.5 disabled:opacity-50"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>{t('mark_resolved_btn') || 'Resolve'}</span>
+                        </button>
+                      )}
+
+                      {isResolved && (
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-900/40">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Resolved</span>
+                        </span>
+                      )}
+                    </div>
+
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
     </div>

@@ -107,6 +107,26 @@ def init_db():
         )
     """)
 
+    # 6. SOS emergency alerts
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS sos_alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            train_no TEXT NOT NULL DEFAULT 'Unknown',
+            train_name TEXT NOT NULL DEFAULT 'Unknown',
+            coach TEXT,
+            lat REAL,
+            lon REAL,
+            status TEXT NOT NULL DEFAULT 'active',
+            notified_destinations TEXT NOT NULL DEFAULT 'RPF control room, TT, nearby users',
+            user_id TEXT DEFAULT 'usr_anonymous',
+            user_name TEXT DEFAULT 'Passenger',
+            acknowledged_by TEXT,
+            resolved_by TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    """)
+
     # Seed initial demo users if not present
     cur.execute("SELECT COUNT(*) FROM users")
     if cur.fetchone()[0] == 0:
@@ -168,6 +188,66 @@ def init_db():
                 INSERT INTO bottleneck_sections (section_name, route_trains, avg_delay_min, congestion_pct, cause_summary)
                 VALUES (?, ?, ?, ?, ?)
             """, b)
+
+    # Seed initial SOS alerts if empty
+    cur.execute("SELECT COUNT(*) FROM sos_alerts")
+    if cur.fetchone()[0] == 0:
+        now_dt = datetime.utcnow()
+        sample_sos = [
+            (
+                "22490",
+                "22490 Vande Bharat",
+                "Coach C-4",
+                28.3670,
+                79.4304,
+                "active",
+                "RPF control room, TT, 4 nearby users",
+                "usr_p10",
+                "Sunita Sharma",
+                None,
+                None,
+                (now_dt - timedelta(minutes=10)).isoformat(),
+                (now_dt - timedelta(minutes=10)).isoformat()
+            ),
+            (
+                "12615",
+                "12615 GT Express",
+                "Coach B-2",
+                20.7453,
+                78.6022,
+                "acknowledged",
+                "RPF control room, TT, 6 nearby users",
+                "usr_p11",
+                "Rajesh Kumar",
+                "Inspector V. K. Singh (RPF Central Control)",
+                None,
+                (now_dt - timedelta(minutes=42)).isoformat(),
+                (now_dt - timedelta(minutes=25)).isoformat()
+            ),
+            (
+                "12951",
+                "12951 Mumbai Rajdhani",
+                "Coach A-1",
+                23.3441,
+                75.0376,
+                "resolved",
+                "RPF control room, TT, 2 nearby users",
+                "usr_p12",
+                "Pooja Verma",
+                "Duty Officer M. Rathore",
+                "Sub-Inspector S. Patil (RPF On-Board Escort)",
+                (now_dt - timedelta(hours=2, minutes=15)).isoformat(),
+                (now_dt - timedelta(hours=1, minutes=40)).isoformat()
+            )
+        ]
+        for s in sample_sos:
+            cur.execute("""
+                INSERT INTO sos_alerts (
+                    train_no, train_name, coach, lat, lon, status,
+                    notified_destinations, user_id, user_name,
+                    acknowledged_by, resolved_by, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, s)
 
     conn.commit()
     conn.close()
@@ -304,6 +384,90 @@ def get_all_passenger_feedback_for_ml():
         })
     return records
 
+def get_sos_alerts(limit: int = 50):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT * FROM sos_alerts
+        ORDER BY id DESC
+        LIMIT ?
+    """, (limit,))
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return rows
+
+def add_sos_alert(
+    train_no: str = "Unknown",
+    train_name: str = "Unknown",
+    coach: str = None,
+    lat: float = None,
+    lon: float = None,
+    notified_destinations: str = "RPF control room, TT, nearby users",
+    user_id: str = "usr_anonymous",
+    user_name: str = "Passenger"
+):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    now_str = datetime.utcnow().isoformat()
+    cur.execute("""
+        INSERT INTO sos_alerts (
+            train_no, train_name, coach, lat, lon, status,
+            notified_destinations, user_id, user_name,
+            acknowledged_by, resolved_by, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, NULL, NULL, ?, ?)
+    """, (
+        train_no or "Unknown",
+        train_name or "Unknown",
+        coach,
+        lat,
+        lon,
+        notified_destinations or "RPF control room, TT, nearby users",
+        user_id or "usr_anonymous",
+        user_name or "Passenger",
+        now_str,
+        now_str
+    ))
+    alert_id = cur.lastrowid
+    conn.commit()
+    cur.execute("SELECT * FROM sos_alerts WHERE id = ?", (alert_id,))
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else {"id": alert_id, "status": "active"}
+
+def update_sos_alert_status(alert_id: int, status: str, official_name: str = None):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    now_str = datetime.utcnow().isoformat()
+    
+    if status == "acknowledged":
+        cur.execute("""
+            UPDATE sos_alerts
+            SET status = 'acknowledged',
+                acknowledged_by = COALESCE(?, acknowledged_by, 'Railway Official'),
+                updated_at = ?
+            WHERE id = ?
+        """, (official_name, now_str, alert_id))
+    elif status == "resolved":
+        cur.execute("""
+            UPDATE sos_alerts
+            SET status = 'resolved',
+                resolved_by = COALESCE(?, resolved_by, 'Railway Official'),
+                updated_at = ?
+            WHERE id = ?
+        """, (official_name, now_str, alert_id))
+    else:
+        cur.execute("""
+            UPDATE sos_alerts
+            SET status = ?, updated_at = ?
+            WHERE id = ?
+        """, (status, now_str, alert_id))
+    
+    conn.commit()
+    cur.execute("SELECT * FROM sos_alerts WHERE id = ?", (alert_id,))
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
 def get_control_room_data():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -316,10 +480,18 @@ def get_control_room_data():
         LIMIT 10
     """)
     recent_reports = [dict(r) for r in cur.fetchall()]
+
+    cur.execute("""
+        SELECT * FROM sos_alerts
+        ORDER BY id DESC
+        LIMIT 50
+    """)
+    sos_alerts = [dict(r) for r in cur.fetchall()]
     conn.close()
     return {
         "bottlenecks": bottlenecks,
-        "recent_reports": recent_reports
+        "recent_reports": recent_reports,
+        "sos_alerts": sos_alerts
     }
 
 def save_train_telemetry_to_db(
