@@ -13,6 +13,7 @@ export interface StationStop {
   confidence_pct?: number | null;
   status_type?: 'departed' | 'current' | 'upcoming';
   role?: string;
+  distanceKm?: number | null;
 }
 
 interface LeaveHomeByBannerProps {
@@ -89,27 +90,43 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({
     return [];
   }, [journeyLog, manualPropStation]);
 
+  // Compute individual distance for every station on the route based on user coordinates
+  const stationsWithDistance = useMemo(() => {
+    if (!stationsList || stationsList.length === 0) return [];
+
+    return stationsList.map((stn) => {
+      let dist: number | null = null;
+      if (userLoc && typeof stn.lat === 'number' && typeof stn.lon === 'number') {
+        dist = Math.round(getDistanceKm(userLoc.lat, userLoc.lon, stn.lat, stn.lon) * 10) / 10;
+        console.log(`[NearestStationCalc] Station: ${stn.station_name} (${stn.lat}, ${stn.lon}) | Distance: ${dist} km`);
+      }
+      return {
+        ...stn,
+        distanceKm: dist,
+      };
+    });
+  }, [stationsList, userLoc]);
+
   useEffect(() => {
-    if (!stationsList || stationsList.length === 0) return;
+    if (!stationsWithDistance || stationsWithDistance.length === 0) return;
 
     if (userLoc) {
-      let closestStation: StationStop = stationsList[0];
+      let closestStation: StationStop = stationsWithDistance[0];
       let minDistance = Infinity;
 
-      for (const stn of stationsList) {
-        if (typeof stn.lat === 'number' && typeof stn.lon === 'number') {
-          const dist = getDistanceKm(userLoc.lat, userLoc.lon, stn.lat, stn.lon);
-          if (dist < minDistance) {
-            minDistance = dist;
-            closestStation = stn;
-          }
+      for (const stn of stationsWithDistance) {
+        if (typeof stn.distanceKm === 'number' && stn.distanceKm < minDistance) {
+          minDistance = stn.distanceKm;
+          closestStation = stn;
         }
       }
 
-      setNearestDistanceKm(Math.round(minDistance * 10) / 10);
+      console.log(`[NearestStationCalc] Selected nearest station: ${closestStation.station_name} at ${closestStation.distanceKm} km (min: ${minDistance} km)`);
+      setNearestDistanceKm(closestStation.distanceKm ?? null);
+
       // Only set auto station if user has not manually selected another station or if the previous selection is invalid
       setSelectedStationName((prev) => {
-        if (prev && stationsList.some((s) => s.station_name === prev)) {
+        if (prev && stationsWithDistance.some((s) => s.station_name === prev)) {
           return prev;
         }
         return closestStation.station_name;
@@ -117,19 +134,19 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({
     } else {
       // Fallback: Default to first upcoming or first route station
       setSelectedStationName((prev) => {
-        if (prev && stationsList.some((s) => s.station_name === prev)) {
+        if (prev && stationsWithDistance.some((s) => s.station_name === prev)) {
           return prev;
         }
-        return stationsList[0]?.station_name || null;
+        return stationsWithDistance[0]?.station_name || null;
       });
     }
-  }, [userLoc, stationsList]);
+  }, [userLoc, stationsWithDistance]);
 
   // The active station object, continuously refreshed with live journey updates
   const activeStation = useMemo(() => {
-    if (!stationsList || stationsList.length === 0) return null;
-    return stationsList.find((s) => s.station_name === selectedStationName) || stationsList[0];
-  }, [stationsList, selectedStationName]);
+    if (!stationsWithDistance || stationsWithDistance.length === 0) return null;
+    return stationsWithDistance.find((s) => s.station_name === selectedStationName) || stationsWithDistance[0];
+  }, [stationsWithDistance, selectedStationName]);
 
   // 3. Traffic / Drive-Time Fetcher: Runs on a SLOWER, fixed cadence (every 3-5 mins)
   const fetchTrafficData = useCallback(async () => {
@@ -227,7 +244,7 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({
     };
   }, [activeStation?.predicted_time, activeStation?.scheduled_time, driveTimeMinutes, activeStation?.confidence_pct]);
 
-  if (!stationsList || stationsList.length === 0) return null;
+  if (!stationsWithDistance || stationsWithDistance.length === 0) return null;
 
   return (
     <div className="w-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl rounded-3xl p-5 sm:p-6 border border-emerald-200/60 dark:border-emerald-900/40 shadow-xl shadow-emerald-500/5 relative overflow-hidden flex flex-col mb-6 mt-2">
@@ -357,9 +374,9 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({
               {t('nearest_station') || 'Nearest Station'}:
             </span>{' '}
             {activeStation ? tStation(activeStation.station_name) : '...'}
-            {nearestDistanceKm !== null && !isLocating && (
+            {(activeStation?.distanceKm ?? nearestDistanceKm) !== null && !isLocating && (
               <span className="text-gray-400 ml-1.5 font-normal">
-                ({nearestDistanceKm} km {t('away') || 'away'})
+                ({activeStation?.distanceKm ?? nearestDistanceKm} km {t('away') || 'away'})
               </span>
             )}
           </span>
@@ -384,7 +401,7 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({
               <div className="px-3 py-1 text-[10px] font-bold uppercase text-gray-400 border-b border-gray-100 dark:border-gray-800 mb-1">
                 {t('select_boarding_station') || 'Select Boarding Station'}
               </div>
-              {stationsList.map((stn) => {
+              {stationsWithDistance.map((stn) => {
                 const isSelected = stn.station_name === activeStation?.station_name;
                 return (
                   <button
@@ -400,7 +417,14 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                     }`}
                   >
-                    <span>{tStation(stn.station_name)}</span>
+                    <div className="flex items-center space-x-1.5">
+                      <span>{tStation(stn.station_name)}</span>
+                      {stn.distanceKm !== null && stn.distanceKm !== undefined && (
+                        <span className="text-[10px] text-gray-400 font-normal">
+                          ({stn.distanceKm} km)
+                        </span>
+                      )}
+                    </div>
                     {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
                   </button>
                 );

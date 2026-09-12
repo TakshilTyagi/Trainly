@@ -3,10 +3,14 @@ routes/trains.py - Train Telemetry, Journey & ETA Endpoints
 """
 
 import json
+import math
 import asyncio
+import logging
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from backend.providers.live_ntes import get_data_provider
+
+logger = logging.getLogger("trainly.trains")
 
 router = APIRouter(prefix="/api", tags=["Trains"])
 
@@ -89,3 +93,57 @@ async def live_updates():
             await asyncio.sleep(6)  # push update every 6 seconds
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+def calculate_haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculates great-circle distance between two GPS points in kilometers."""
+    R = 6371.0
+    d_lat = math.radians(lat2 - lat1)
+    d_lon = math.radians(lon2 - lon1)
+    a = (math.sin(d_lat / 2) ** 2 +
+         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
+         math.sin(d_lon / 2) ** 2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return round(R * c, 2)
+
+@router.get("/train/{train_no}/nearest-station")
+def get_nearest_station(train_no: str, lat: float, lon: float):
+    """
+    Calculates distance individually for each station along the train's route
+    relative to user coordinates (lat, lon), logs each station's distance,
+    and returns the sorted stations with the genuinely nearest station.
+    """
+    provider = get_data_provider()
+    journey = provider.get_train_journey(train_no)
+    if not journey:
+        raise HTTPException(status_code=404, detail=f"Train {train_no} not found")
+
+    stops = journey.get("journey_log", [])
+    logger.info(f"[NearestStationCalc] Evaluating {len(stops)} stations for Train {train_no} from user coords ({lat}, {lon}):")
+
+    calculated_stations = []
+    for s in stops:
+        s_lat = s.get("lat")
+        s_lon = s.get("lon")
+        if s_lat is not None and s_lon is not None:
+            dist = calculate_haversine_distance(lat, lon, float(s_lat), float(s_lon))
+            logger.info(f"   Station: {s['station_name']} ({s_lat}, {s_lon}) => Distance: {dist} km")
+            calculated_stations.append({
+                **s,
+                "distance_km": dist
+            })
+
+    if not calculated_stations:
+        raise HTTPException(status_code=400, detail="No stations with coordinates found on this route")
+
+    # Sort stations strictly by calculated distance
+    calculated_stations.sort(key=lambda x: x["distance_km"])
+    nearest = calculated_stations[0]
+    logger.info(f"[NearestStationCalc] Selected nearest station: {nearest['station_name']} at {nearest['distance_km']} km")
+
+    return {
+        "train_no": train_no,
+        "user_coordinates": {"lat": lat, "lon": lon},
+        "nearest_station": nearest,
+        "all_stations": calculated_stations
+    }
+
