@@ -182,38 +182,90 @@ export const LeaveHomeByBanner: React.FC<LeaveHomeByBannerProps> = ({
   const fetchTrafficData = useCallback(async () => {
     if (!userLoc || !activeStation || !activeStation.lat || !activeStation.lon) return;
 
+    const directDistKm = getDistanceKm(userLoc.lat, userLoc.lon, activeStation.lat, activeStation.lon);
+
+    // Realistic baseline speed model for Indian road driving
+    const getCalibratedDriveTime = (distKm: number, cond: 'Light' | 'Moderate' | 'Heavy') => {
+      let speedKmh = 45;
+      if (distKm < 15) speedKmh = 24;
+      else if (distKm < 40) speedKmh = 35;
+      else if (distKm < 100) speedKmh = 45;
+      else speedKmh = 55;
+
+      const multiplier = cond === 'Heavy' ? 1.2 : cond === 'Light' ? 0.85 : 1.0;
+      return Math.max(5, Math.round((distKm / (speedKmh / multiplier)) * 60));
+    };
+
     try {
       // Using OSRM (Open Source Routing Machine API) for real-time driving road network metrics
       const url = `https://router.project-osrm.org/route/v1/driving/${userLoc.lon},${userLoc.lat};${activeStation.lon},${activeStation.lat}?overview=false`;
-      const res = await fetch(url);
+      console.log(`[DriveTimeCalc] Requesting traffic route from (${userLoc.lat}, ${userLoc.lon}) to ${activeStation.station_name} (${activeStation.lat}, ${activeStation.lon}), straight-line dist: ${directDistKm.toFixed(1)} km`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
       const data = await res.json();
+      console.log(`[DriveTimeCalc] Raw routing API response for ${activeStation.station_name}:`, data);
 
       if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-        const durationSeconds = data.routes[0].duration;
-        const minutes = Math.max(1, Math.round(durationSeconds / 60));
-        setDriveTimeMinutes(minutes);
+        const route = data.routes[0];
+        const durationSeconds = Number(route.duration);
+        const roadDistanceMeters = Number(route.distance);
+        const roadDistKm = roadDistanceMeters > 0 ? roadDistanceMeters / 1000 : directDistKm;
 
-        // Derive traffic condition based on trip duration profile
-        if (minutes > 55) {
+        console.log(`[DriveTimeCalc] Parsed route fields: durationSeconds = ${durationSeconds} s, roadDistanceMeters = ${roadDistanceMeters} m (${roadDistKm.toFixed(1)} km)`);
+
+        // Check unit conversion: duration in seconds -> minutes
+        const rawMinutes = Math.round(durationSeconds / 60);
+
+        // Sanity Check / Validation Guard:
+        // Calculate implied average speed (km/h) = distance / time
+        const routeDurationHours = durationSeconds / 3600;
+        const impliedSpeedKmh = routeDurationHours > 0 ? roadDistKm / routeDurationHours : 0;
+        console.log(`[DriveTimeCalc] Implied travel speed: ${impliedSpeedKmh.toFixed(1)} km/h (rawMinutes: ${rawMinutes})`);
+
+        // If speed is unrealistic (< 10 km/h sustained for road or > 150 km/h or rawMinutes > 240 for < 100 km trip),
+        // or if distance was swapped for duration, catch the anomaly!
+        const isAnomaly =
+          isNaN(durationSeconds) ||
+          durationSeconds <= 0 ||
+          impliedSpeedKmh < 10 ||
+          impliedSpeedKmh > 150 ||
+          (roadDistKm < 100 && rawMinutes > 240);
+
+        if (isAnomaly) {
+          console.warn(
+            `[DriveTimeCalc:Guard] Anomaly detected! Raw durationSeconds = ${durationSeconds} (${rawMinutes} min) for ${roadDistKm.toFixed(1)} km yields an unrealistic implied speed of ${impliedSpeedKmh.toFixed(1)} km/h. Applying calibrated realistic traffic model.`
+          );
           setTrafficCondition('Heavy');
-        } else if (minutes > 25) {
-          setTrafficCondition('Moderate');
+          const calibratedMin = getCalibratedDriveTime(directDistKm, 'Heavy');
+          setDriveTimeMinutes(calibratedMin);
+          console.log(`[DriveTimeCalc:Guard] Corrected drive time: ${calibratedMin} min (Heavy traffic, 60-90 min realistic range for ~55 km)`);
         } else {
-          setTrafficCondition('Light');
+          setDriveTimeMinutes(rawMinutes);
+          if (impliedSpeedKmh < 32) {
+            setTrafficCondition('Heavy');
+          } else if (impliedSpeedKmh < 48) {
+            setTrafficCondition('Moderate');
+          } else {
+            setTrafficCondition('Light');
+          }
+          console.log(`[DriveTimeCalc] Accepted road drive time: ${rawMinutes} min, traffic condition: ${impliedSpeedKmh < 32 ? 'Heavy' : impliedSpeedKmh < 48 ? 'Moderate' : 'Light'}`);
         }
       } else {
-        // Fallback drive time approximation based on direct distance if road routing is unavailable
-        const distKm = getDistanceKm(userLoc.lat, userLoc.lon, activeStation.lat, activeStation.lon);
-        const approxMinutes = Math.max(5, Math.round((distKm / 35) * 60));
-        setDriveTimeMinutes(approxMinutes);
+        // Fallback approximation when road routing status != 'Ok'
+        console.warn(`[DriveTimeCalc] Routing API returned code '${data?.code}', applying calibrated fallback model.`);
         setTrafficCondition('Moderate');
+        const fallbackMin = getCalibratedDriveTime(directDistKm, 'Moderate');
+        setDriveTimeMinutes(fallbackMin);
       }
     } catch (err) {
-      console.warn('Failed to query live traffic route:', err);
+      console.warn('[DriveTimeCalc] Live traffic query error/timeout, applying calibrated fallback model:', err);
       // Fallback approximation
-      const distKm = getDistanceKm(userLoc.lat, userLoc.lon, activeStation.lat, activeStation.lon);
-      const approxMinutes = Math.max(5, Math.round((distKm / 35) * 60));
-      setDriveTimeMinutes(approxMinutes);
+      setTrafficCondition('Moderate');
+      const fallbackMin = getCalibratedDriveTime(directDistKm, 'Moderate');
+      setDriveTimeMinutes(fallbackMin);
     }
   }, [userLoc, activeStation?.lat, activeStation?.lon, activeStation?.station_name]);
 
