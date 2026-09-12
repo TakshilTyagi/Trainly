@@ -4,6 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { NavigationMap } from '../components/NavigationMap';
 import { FloatingAssistantWidget } from '../components/FloatingAssistantWidget';
 import { apiUrl } from '../api/config';
+import { DEFAULT_JOURNEY_22490 } from '../data/initialData';
 
 interface TrackerPageProps {
   initialTrain?: string;
@@ -90,7 +91,12 @@ export const TrackerPage: React.FC<TrackerPageProps> = ({ initialTrain = '22490'
   const [isComboboxOpen, setIsComboboxOpen] = useState(false);
   const [comboboxSearch, setComboboxSearch] = useState('');
   const comboboxRef = useRef<HTMLDivElement>(null);
-  const [journeyData, setJourneyData] = useState<JourneyData | null>(null);
+  const [journeyData, setJourneyData] = useState<JourneyData | null>(() => {
+    if (initialTrain === '22490') {
+      return DEFAULT_JOURNEY_22490 as unknown as JourneyData;
+    }
+    return null;
+  });
   const [activeStationIdx, setActiveStationIdx] = useState<number>(0);
   const [scrollProgress, setScrollProgress] = useState<number>(0);
   const journeyLogRef = useRef<HTMLDivElement>(null);

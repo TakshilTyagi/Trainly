@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowUpDown, ChevronDown, ChevronUp, Sparkles, Gauge, ArrowRight, Search, Filter } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { apiUrl } from '../api/config';
+import { DEFAULT_FLEET } from '../data/initialData';
 
 export type FleetStatusFilter = 'ALL' | 'ON_TIME' | 'DELAYED' | 'NOT_DEPARTED' | 'ARRIVED';
 
@@ -72,7 +73,7 @@ const FILTER_OPTIONS: { id: FleetStatusFilter; labelKey: string; dotColor: strin
 
 export const FleetPage: React.FC<FleetPageProps> = ({ onSelectTrain }) => {
   const { t, tStation, tTrainName, tStatusLabel, tDynamic } = useLanguage();
-  const [fleet, setFleet] = useState<FleetTrain[]>([]);
+  const [fleet, setFleet] = useState<FleetTrain[]>(DEFAULT_FLEET as FleetTrain[]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<FleetStatusFilter>('ALL');
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
