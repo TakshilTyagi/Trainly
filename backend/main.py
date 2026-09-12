@@ -59,6 +59,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def vercel_path_rewrite_middleware(request, call_next):
+    """
+    Normalizes paths when invoked inside Vercel Serverless Functions.
+    Resolves cases where Vercel routes /api/index.py or strips /api prefix.
+    """
+    current_path = request.scope.get("path", "")
+    if current_path in ["/api/index.py", "/api/index", "/api/index/"]:
+        orig = (
+            request.headers.get("x-matched-path")
+            or request.headers.get("x-forwarded-uri")
+            or request.headers.get("x-original-url")
+            or request.headers.get("x-invoke-path")
+        )
+        if orig and not orig.startswith("/api/index"):
+            request.scope["path"] = orig
+    elif not current_path.startswith("/api") and not current_path.startswith("/docs") and not current_path.startswith("/openapi.json"):
+        request.scope["path"] = f"/api{current_path}"
+    return await call_next(request)
+
+# API Health Check Endpoint
+@app.get("/api")
+@app.get("/api/health")
+def api_health():
+    return {
+        "status": "ok",
+        "service": "Trainly API",
+        "version": "1.0.0"
+    }
+
 # Include API Routers
 app.include_router(trains_router)
 app.include_router(feedback_router)
